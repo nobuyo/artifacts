@@ -1,0 +1,15 @@
+#!/bin/sh
+
+#
+# chcolor - prompt color switcher
+#
+
+if [ $PROMPT_COLOR_SWITCH = 0 ]; then
+  # echo "color"
+  . ~/.zshrc_color
+  export PROMPT_COLOR_SWITCH=1
+elif [ $PROMPT_COLOR_SWITCH = 1 ]; then
+  # echo "plain"
+  . ~/.zshrc_cygwin
+  export PROMPT_COLOR_SWITCH=0
+fi

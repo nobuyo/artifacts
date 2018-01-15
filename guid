@@ -1,0 +1,12 @@
+#!/bin/bash
+
+#
+# guid - get guid online
+#
+
+function get_guid {
+  GUID="$(curl -ks "https://www.guidgen.com/" | grep value | sed -e 's/.*value="//g' | sed -e 's:" />.*::g' | tr "[:lower:]" "[:upper:]")"
+}
+
+get_guid
+echo "$GUID"

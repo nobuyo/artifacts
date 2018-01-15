@@ -1,0 +1,275 @@
+#!/usr/bin/env bash
+
+# get weather forecast
+
+# TODO
+# support weekend
+# ==> remove html coloring code
+
+# # using GNU sed (for dev)
+# function sed {
+#   case `uname` in
+#     Darwin) # mac os
+#       /usr/local/bin/gsed "$@" ;;
+#     *)
+#       /usr/bin/sed "$@" ;;
+#   esac
+# }
+
+function error {
+  # color:red
+  echo -e "\033[31mError\033[m" "$*"
+}
+
+function get_today {
+  WEATHER_FORECAST="$(wget -q $WEATHER_URL/$WHETHER_AREA_CODE -O - |\
+ sed -ne "/\t<h3>.*$(date '+%-m').$(date '+%-d').*<\/h3>/,/<div/p" |\
+ sed -e 's/<[/].*>//g' -e 's/.*>//g' -e 's/\s/\n/g' |\
+ sed '/^$/d' | head -n -2
+ )"
+}
+
+function get_tomorrow {
+  WEATHER_FORECAST="$(wget -q $WEATHER_URL/$WHETHER_AREA_CODE -O - |\
+ sed -ne "/\t<h3>.*$(date '+%-m' -d tomorrow).$(date '+%-d' -d tomorrow).*<\/h3>/,/<div/p" |\
+ sed -e 's/<[/].*>//g' -e 's/.*>//g' -e 's/\s/\n/g' |\
+ sed '/^$/d' | head -n -2
+ )"
+}
+
+function get_week {
+  WEATHER_FORECAST="$(wget -q $WEATHER_URL/$WHETHER_AREA_CODE -O - |\
+ sed -ne "/week/,/<div/p" | sed -e 's/<\/span>//g' -e 's/<span class="maxtemp">//g' |\
+ sed -e 's/<span style="color: .*">//g' -e 's/>/>\n/g' |\
+ sed -e 's/<span.*">\n//g' -e 's/<\/.*>//g'  -e 's/<.*>//g' -e 's/&.*//g' -e 's/\+\n/\+/g' |\
+ sed '/^$/d'
+ )"
+}
+
+# 2016 3.10 fix line number
+function mold {
+  WEATHER_TITLE="$(echo "$WEATHER_FORECAST" | head -3 )"
+  WEATHER_STATE="$(echo "$WEATHER_FORECAST" | head -4 | tail -1)"
+  WEATHER_MAX="$(echo "$WEATHER_FORECAST" | head -5 | tail -1 )"
+  WEATHER_MAX_TEMP="$(echo "$WEATHER_FORECAST" | head -6 | tail -1 )"
+  # WEATHER_MAX_DIFF="$(echo "$WEATHER_FORECAST" | head -8 | tail -1 )"
+  WEATHER_MIN="$(echo "$WEATHER_FORECAST" | head -7 | tail -1 )"
+  WEATHER_MIN_TEMP="$(echo "$WEATHER_FORECAST" | head -8 | tail -1 )"
+  # WEATHER_MIN_DIFF="$(echo "$WEATHER_FORECAST" | head -12 | tail -1 )"
+  WEATHER_RAIN_TITLE="$(echo "$WEATHER_FORECAST" | tail -n +14 | head -1 )"
+  WEATHER_RAIN="$(echo "$WEATHER_FORECAST" | tail -n +15 | head -4 )"
+  WEATHER_RAIN_SIX="$(echo "$WEATHER_RAIN" | head -1 )"
+  WEATHER_RAIN_TWE="$(echo "$WEATHER_RAIN" | head -2 | tail -1 )"
+  WEATHER_RAIN_EIT="$(echo "$WEATHER_RAIN" | head -3 | tail -1 )"
+  WEATHER_RAIN_ZERO="$(echo "$WEATHER_RAIN" | tail -1 )"
+  WEATHER_WIND_TITLE="$(echo "$WEATHER_FORECAST" | tail -n +19 | head -1 )"
+  WEATHER_WIND="$(echo "$WEATHER_FORECAST" | tail -n +20 | head -1 )"
+  # WEATHER_WAVE_TITLE="$(echo "$WEATHER_FORECAST" | tail -n +25 | head -1)"
+  # WEATHER_WAVE="$(echo "$WEATHER_FORECAST" | tail -n +26)"
+  }
+
+function mold_week {
+  WEEK_DAYS="$(echo "$WEATHER_FORECAST" | head -6 )"
+  WEEK_STATE_TITLE="$(echo "$WEATHER_FORECAST" | head -7 | tail -1 )"
+  WEEK_STATE="$(echo "$WEATHER_FORECAST" | tail -n +8 | head -6 )"
+  WEEK_MAX_TITLE="$(echo "$WEATHER_FORECAST" | tail -n +14 | head -1 )"
+  WEEK_MAX_TEMP="$(echo "$WEATHER_FORECAST" | tail -n +15 | head -6 )"
+  WEEK_MIN_TITLE="$(echo "$WEATHER_FORECAST" | tail -n +21 | head -1 )"
+  WEEK_MIN_TEMP="$(echo "$WEATHER_FORECAST" | tail -n +22 | head -6 )"
+  WEEK_RAIN_TITLE="$(echo "$WEATHER_FORECAST" | tail -n +28 | head -1 )"
+  WEEK_RAIN="$(echo "$WEATHER_FORECAST" | tail -n +29 )"
+}
+
+function disp {
+  echo -e "\033[33m"$WEATHER_TITLE"\033[m"
+  echo "$WEATHER_STATE"
+  echo ""
+  echo -e "\033[33m$WEATHER_MAX/$WEATHER_MIN\033[m"
+  echo "$WEATHER_MAX_TEMP$WEATHER_MAX_DIFF/$WEATHER_MIN_TEMP$WEATHER_MIN_DIFF"
+  echo ""
+  echo -e "\033[33m$WEATHER_RAIN_TITLE\033[m"
+  echo "|  0-6  | 06-12 | 12-18 | 18-24 |"
+  echo "|  $WEATHER_RAIN_SIX  |  $WEATHER_RAIN_TWE  |  $WEATHER_RAIN_EIT  |  $WEATHER_RAIN_ZERO  |"
+  echo ""
+  echo -e "\033[33m$WEATHER_WIND_TITLE\033[m"
+  echo $WEATHER_WIND
+  # echo ""
+  # echo -e "\033[33m$WEATHER_WAVE_TITLE\033[m"
+  # echo $WEATHER_WAVE
+}
+
+function disp_week {
+  # title line
+  echo -n "| "
+  for d in ${WEEK_DAYS[@]};
+  do
+    printf "%8s | " "$(echo -ne "\033[36m"$d"\033[m")"
+  done
+  echo "";
+
+  # state line
+  echo -n "| "
+  for d in ${WEEK_STATE[@]};
+  do
+    printf "%7s | "  "$d"
+  done
+  echo "";
+
+  # max temp line
+  echo -n "| "
+  for d in ${WEEK_MAX_TEMP[@]};
+  do
+    printf "%8s | "  "$d"
+  done
+  echo "";
+
+  # min temp line
+  echo -n "| "
+  for d in ${WEEK_MIN_TEMP[@]};
+  do
+    printf "%8s | "  "$d"
+  done
+  echo ""; # echo -n "|   "
+
+
+  # rain line
+  echo -n "| "
+  for d in ${WEEK_RAIN[@]};
+  do
+    printf "%7s | "  "$d"
+  done
+  echo "";
+}
+
+
+function set_area {
+  for chk in ${!place[*]};
+    do
+      if [ "$1" = "$chk" ]; then
+        valid=1
+      fi
+    done
+  if [ "$valid" = 0 ]; then
+    error "unknown area $1, see --help. exit"
+    exit 1
+  fi
+  WHETHER_AREA_CODE="${place["$1"]}"
+}
+
+function usage {
+  echo "usage: tenki <option> <area>"
+  echo ""
+  echo "script supports following AREA"
+  echo "-----"
+  echo "${!place[@]}"
+  echo "-----"
+  echo ""
+  echo "Options:"
+  echo "  --tomorrow|-t :show tomorrow's forecast"
+  echo "  --week|-w     :show weekly forecast"
+  echo "  --more|-m     :show more on browser"
+  echo "  --version|-V  :show version info"
+  echo "  --help|-h     :show this menu"
+}
+
+function version {
+  echo "tenki 0.2.4"
+  echo "written by @nobuyo"
+}
+
+
+WEATHER_URL="http://weather.livedoor.com/area/forecast"
+
+# Add your city ... place[city name]="basename of URL"
+declare -A place
+place[kushiro]="014020"
+place[sapporo]="016010"
+place[sendai]="040010"
+place[akita]="050010"
+place[tokyo]="130010"
+place[saitama]="110010"
+place[yokohama]="140010"
+place[kanazawa]="170010"
+place[nagano]="200010"
+place[nagoya]="230010"
+place[osaka]="270000"
+place[kyoto]="260010"
+place[hiroshima]="340010"
+place[kochi]="390010"
+place[fukuoka]="400010"
+place[okinawa]="471010"
+
+#default: NAGANO,Nagano
+set_area "nagano"
+
+valid=0
+WEEK=0
+TOMORROW=0
+MORE=0
+while [ $# -gt 0 ]
+do
+  case "$1" in
+
+    --tomorrow|-t)
+      TOMORROW=1
+      shift
+    ;;
+
+    --week|-w)
+      WEEK=1
+      shift
+    ;;
+
+    --help|help|-h)
+      usage
+      exit 0
+    ;;
+
+    --more|-m)
+      MORE=1
+      shift
+    ;;
+
+    --version|version|-V)
+      version
+      exit 0
+    ;;
+
+    *)
+      if [ -z "$AREA" ]; then
+       set_area $1
+      else
+        ARGS+=( "$1" )
+      fi
+      shift
+    ;;
+  esac
+done
+
+
+if [ "$TOMORROW" = 1 ]; then
+  get_tomorrow
+  mold
+  disp
+  exit 0
+elif [ "$WEEK" = 1 ]; then
+  get_week
+  mold_week
+  disp_week
+  exit 0
+elif [ "$MORE" = 1 ]; then
+  case ${OSTYPE} in
+    cygwin )
+      cygstart "$WEATHER_URL/$WHETHER_AREA_CODE"
+      ;;
+
+    *)
+      open "$WEATHER_URL/$WHETHER_AREA_CODE"
+      ;;
+  esac
+  exit 0
+else
+  get_today
+  mold
+  disp
+fi

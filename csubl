@@ -1,0 +1,10 @@
+#!/bin/bash
+
+if [ -d "$1" ]; then
+  cd "$1"
+  subl .
+elif [ "$1" = "" ]; then
+  subl
+else
+  subl "$1"
+fi

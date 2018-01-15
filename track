@@ -1,0 +1,10 @@
+#!/bin/sh
+
+function yamato() {
+  num="$(echo $1 | tr -d '-')"
+  curl -s "http://nanoappli.com/tracking/api/$num.yaml" | perl -Xpne 's/\\u([0-9a-fA-F]{4})/chr(hex($1))/eg'
+}
+
+if [[ "$1" == "yamato" ]]; then 
+  yamato "$2"
+fi

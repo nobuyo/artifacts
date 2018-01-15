@@ -1,0 +1,101 @@
+#! /bin/bash
+
+# using GNU sed (for dev)
+function sed {
+  case `uname` in
+    Darwin) # mac os
+      /usr/local/bin/gsed "$@" ;;
+    *)
+      /usr/bin/sed "$@" ;;
+  esac
+}
+
+function usage {
+	echo ""
+	echo 'Rebuilding Java Project for Eclipse'
+	echo 'Usage : javalipse <Directory name>'
+	echo ""
+	exit 0
+}
+
+function error {
+	echo "Directory not exist"
+	exit 1
+}
+
+if [ "$1" = "" ]; then
+	usage
+elif [ "$#" -ne 1 ]; then
+	echo "auguments too much"
+	usage
+fi
+
+if [ ! -e "$1" ]; then
+	error
+fi
+
+if [ ! -e "$1.orig" ]; then
+	cp -r $1 $1.orig
+fi
+
+cd $1
+
+if [ ! -e "bin" ]; then
+	mkdir bin
+fi
+
+if [ ! -e "src" ]; then
+	mkdir src
+fi
+
+for file in $(find . -name '*.java')
+do
+	classfile=`echo $file | sed -e 's/java/class/g'`
+	name=`echo $file | awk -F / '{print $NF}'`
+	classname=`echo $name | sed -e 's/java/class/g'`
+	echo $name $classname
+	dir=`cat ${file} | grep 'package' | awk '{print $2}' | sed -e 's/\;//g' | sed -e 's/\r//g'`
+	echo "src/$dir" "bin/$dir"
+	mkdir -p src/$dir
+	mv $file src/$dir/$name
+	mkdir -p bin/$dir
+	mv $classfile bin/$dir/$classname
+done
+
+#find . -type d -empty -exec rm -rf {} \; # for windows
+find . -type d -empty -delete  # for mac or BSD
+
+# TODO
+# flexible processing to "Main.java"
+if [ -e "src/Main.java" ]; then
+	grep '^package main;' src/Main.java && mkdir -p main && mv src/Main.java src/main/Main.java && mv bin/Main.class bin/main/Main.class
+fi
+
+cat << EOT > .classpath
+<?xml version="1.0" encoding="UTF-8"?>
+<classpath>
+	<classpathentry kind="src" path="src"/>
+	<classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER"/>
+	<classpathentry kind="output" path="bin"/>
+</classpath>
+EOT
+
+cat << EOT > .project
+<?xml version="1.0" encoding="UTF-8"?>
+<projectDescription>
+	<name>$1</name>
+	<comment></comment>
+	<projects>
+	</projects>
+	<buildSpec>
+		<buildCommand>
+			<name>org.eclipse.jdt.core.javabuilder</name>
+			<arguments>
+			</arguments>
+		</buildCommand>
+	</buildSpec>
+	<natures>
+		<nature>org.eclipse.jdt.core.javanature</nature>
+	</natures>
+</projectDescription>
+EOT
